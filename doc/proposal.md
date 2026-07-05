@@ -1,8 +1,8 @@
-# CreditPilot — Product Requirements Document (Proposal)
+# CardPilot — Product Requirements Document (Proposal)
 
 | | |
 |---|---|
-| **Product** | CreditPilot |
+| **Product** | CardPilot |
 | **Version** | 0.1 (Draft) |
 | **Date** | 2026-07-04 |
 | **Status** | Proposal — pending review |
@@ -12,11 +12,11 @@
 
 ## 1. Overview
 
-CreditPilot is a web application (responsive web + PWA first, native mobile app later) that helps US credit card holders answer one question instantly:
+CardPilot is a web application (responsive web + PWA first, native mobile app later) that helps US credit card holders answer one question instantly:
 
 > **"Which of my cards should I use for this purchase?"**
 
-The user selects a **spending category** (dining, groceries, gas, online shopping, travel, etc. — user-facing categories, not raw MCC codes), and CreditPilot ranks the user's own cards by real reward value for that purchase. Beyond the user's wallet, CreditPilot also surfaces **cards worth applying for** — showing how much more the user would earn on the same spending if they held a given card.
+The user selects a **spending category** (dining, groceries, gas, online shopping, travel, etc. — user-facing categories, not raw MCC codes), and CardPilot ranks the user's own cards by real reward value for that purchase. Beyond the user's wallet, CardPilot also surfaces **cards worth applying for** — showing how much more the user would earn on the same spending if they held a given card.
 
 A later phase extends this into travel: choosing the best card **combination** when booking hotels and flights, taking card-specific benefits (travel credits, free-night certificates, transfer partners, protections) into account.
 
@@ -58,7 +58,7 @@ A later phase extends this into travel: choosing the best card **combination** w
 
 1. **Account & wallet**
    - Sign up / sign in with email + password and Google OAuth.
-   - User adds cards to their wallet by searching the CreditPilot card database.
+   - User adds cards to their wallet by searching the CardPilot card database.
    - Wallet is stored server-side and syncs across devices.
 
 2. **Best-card recommendation (owned cards)**
@@ -172,7 +172,7 @@ ActivationState wallet_entry_id, period_key, activated (bool)
 
 ### 5.3 Points valuation
 
-- Every rewards currency has a **default cents-per-point (cpp)** value maintained by the CreditPilot team (e.g. cash = 1.0, UR = 1.6, MR = 1.7, C1 = 1.5 — values to be set editorially and reviewed quarterly).
+- Every rewards currency has a **default cents-per-point (cpp)** value maintained by the CardPilot team (e.g. cash = 1.0, UR = 1.6, MR = 1.7, C1 = 1.5 — values to be set editorially and reviewed quarterly).
 - Users can override any currency's cpp in settings; overrides apply to all of that user's calculations.
 - All comparisons and rankings are done in **dollars**, never in raw points.
 
@@ -200,7 +200,7 @@ Every step's inputs are retained in the response payload so the UI can render an
 |---|---|
 | Performance | Recommendation endpoint p95 < 300 ms; recommendation math is pure computation over a small dataset — no external calls on the hot path. |
 | Availability | Single-region deployment acceptable for MVP; graceful degradation: read-only card browsing works without login. |
-| Security | Passwords hashed (argon2/bcrypt); OAuth via standard OIDC flow; HTTPS only; no card *numbers* are ever collected — CreditPilot stores card *products*, not PANs. This should be stated prominently in the UI. |
+| Security | Passwords hashed (argon2/bcrypt); OAuth via standard OIDC flow; HTTPS only; no card *numbers* are ever collected — CardPilot stores card *products*, not PANs. This should be stated prominently in the UI. |
 | Privacy | Only email + wallet composition + optional spend estimates are stored. Account deletion removes all user data. No sale of data. |
 | Data accuracy | Every card page shows "rules last verified" date; a disclaimer notes terms can change and the issuer's terms control. Editorial review cadence: monthly, plus quarterly rotation updates. |
 | Compatibility | Responsive web, mobile-first; PWA installable (manifest + service worker, offline shell with cached card DB read-only). Evergreen browsers. |
@@ -252,7 +252,7 @@ CardPilot/
 
 ## 9. Business model (brief)
 
-CreditPilot launches as a free tool. Potential future revenue, deliberately out of MVP scope:
+CardPilot launches as a free tool. Potential future revenue, deliberately out of MVP scope:
 
 - **Affiliate/referral links** on new-card suggestions (requires issuer affiliate program onboarding and clear advertising disclosures; ranking must remain independent of commissions to preserve trust).
 - Premium tier candidates: transaction sync, travel booking optimizer, household/multi-player wallets.
@@ -281,7 +281,7 @@ No monetization work is planned until the recommendation core proves retention.
 | 3 | **Category ambiguity**: a purchase's real MCC may not match the user's chosen category (e.g. Walmart groceries codes as discount store). | Show MCC caveats on category pages ("Walmart usually doesn't count as Groceries"). |
 | 4 | **Legal/compliance**: card marks/images, trademark use, and (later) affiliate advertising rules. | Use editorial descriptions + issuer-provided art guidelines; legal review before any affiliate launch. |
 | 5 | Default cpp valuations are editorial opinions. | Publish methodology; allow user overrides (already in scope). |
-| 6 | Naming: repo is `CardPilot`, product is `CreditPilot`. | Decide canonical name before public launch; check domain/trademark availability. |
+| 6 | Naming: repo is `CardPilot`, product is `CardPilot`. | Decide canonical name before public launch; check domain/trademark availability. |
 
 ---
 
