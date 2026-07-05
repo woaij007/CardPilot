@@ -1,0 +1,45 @@
+# Project-specific
+PROMPT.md
+
+# ---------- Node / Frontend (React + Vite + TS) ----------
+node_modules/
+dist/
+dist-ssr/
+build/
+.vite/
+*.local
+.eslintcache
+.turbo/
+
+# ---------- Python / Backend (FastAPI) ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---------- Env / secrets ----------
+.env
+.env.*
+!.env.example
+
+# ---------- Logs ----------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- Editors / OS ----------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
