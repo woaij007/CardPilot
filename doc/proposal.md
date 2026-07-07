@@ -62,7 +62,7 @@ A later phase extends this into travel: choosing the best card **combination** w
 1. **Wallet (local, no login)**
    - No account or sign-in in MVP. The app is usable immediately.
    - User adds cards to their wallet by searching the CardPilot card database.
-   - Wallet — held cards, cap-usage entries, activation states, and point-valuation overrides — is stored in the browser's **localStorage**. No user data leaves the device except the stateless recommendation request.
+   - Wallet — held cards, cap-usage entries, activation states, and point-valuation overrides — is stored in the browser's **localStorage**. Recommendations are computed on-device, so **no user data ever leaves the browser**.
 
 2. **Best-card recommendation (owned cards)**
    - User picks a spending category (and optionally an amount).
@@ -203,7 +203,7 @@ The `User` / `UserSettings` server-side entities and the account linkage of the 
 
 ## 6. Recommendation algorithm (MVP)
 
-The recommendation endpoint is **stateless**: the client sends the purchase (`amount A`, `category C`) together with its locally stored wallet — held card ids, cap-usage entries, activation states, and any cpp overrides. The server resolves rules from the card catalog and computes the ranking. For each card in the submitted wallet:
+Recommendation runs **entirely client-side**. The browser holds a locally cached copy of the card catalog (cards, reward rules, rotations, currencies — see §8.2) plus the wallet in localStorage, so it computes the ranking with **no backend round-trip** and works fully offline. The backend's only jobs are distributing/updating the catalog and admin editing; it never sees the wallet. For a purchase of `amount A` in category `C`, for each card in the wallet:
 
 1. **Resolve the applicable rule**: the rule for `C` effective today; for rotating cards, the current quarter's rotation entry; fall back to the card's base rate if no category rule matches.
 2. **Apply activation**: if the rule `requires_activation` and the user hasn't marked it activated, use the base rate and attach an "activate to earn X%" note.
@@ -213,7 +213,7 @@ The recommendation endpoint is **stateless**: the client sends the purchase (`am
 
 Annual fees are **not** part of the per-purchase ranking of owned cards (the fee is sunk once the card is held). Fees enter only the Phase 2 new-card suggestion metric (§4.4 SUG-2).
 
-Every step's inputs are retained in the response payload so the UI can render an explanation ("2,000 pts × 1.6¢ = $32; $500 of quarterly cap remaining").
+Every step's inputs are retained in the computed result so the UI can render an explanation ("2,000 pts × 1.6¢ = $32; $500 of quarterly cap remaining"). The same pure function is written in TypeScript for the client; if a server-side implementation is ever needed (e.g. Phase 2 suggestions), the rules live in one place (the catalog) so the logic can be mirrored.
 
 ---
 
@@ -221,10 +221,10 @@ Every step's inputs are retained in the response payload so the UI can render an
 
 | Area | Requirement |
 |---|---|
-| Performance | Recommendation endpoint p95 < 300 ms; recommendation math is pure computation over a small dataset — no external calls on the hot path. |
-| Availability | Single-region deployment acceptable for MVP; the whole app is usable with no login. Card browsing and the wallet work offline from the PWA cache; only fresh recommendations need the API. |
+| Performance | Recommendation is computed client-side over a small cached dataset — effectively instant (<50 ms), no network on the hot path. Catalog sync (§8.2) is the only API call and is cached/versioned. |
+| Availability | Single-region deployment acceptable for MVP; the whole app is usable with no login. Once the catalog is cached, **everything — browsing, wallet, and recommendations — works fully offline** from the PWA cache. The API is only needed to fetch catalog updates. |
 | Security | HTTPS only; no card *numbers* are ever collected — CardPilot stores card *products*, not PANs. This should be stated prominently in the UI. No credentials are handled in MVP (no login). Auth security (password hashing with argon2/bcrypt, OIDC flow, session tokens) is specified for Phase 2 when accounts land. |
-| Privacy | MVP stores **no personal data server-side**: the wallet lives only in the user's browser. The stateless recommendation request carries wallet composition transiently and is not persisted or logged with identifiers. No sale of data. |
+| Privacy | MVP stores **no personal data server-side** and the wallet **never leaves the device** — recommendations are computed locally, so no wallet data is sent to the API at all. The only client→server traffic is anonymous catalog fetches. No sale of data. |
 | Data accuracy | Every card page shows "rules last verified" date; a disclaimer notes terms can change and the issuer's terms control. Editorial review cadence: monthly, plus quarterly rotation updates. |
 | Compatibility | Responsive web, mobile-first; PWA installable (manifest + service worker, offline shell with cached card DB read-only). Evergreen browsers. |
 | i18n | English-only UI for MVP; copy externalized to allow future localization. |
@@ -238,8 +238,8 @@ Every step's inputs are retained in the response payload so the UI can render an
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Frontend | **React + Vite + TypeScript** | SPA + PWA (vite-plugin-pwa). State: TanStack Query for server state; router: React Router. UI kit TBD during design. |
-| Backend | **Python + FastAPI** | Async, typed (Pydantic v2), auto-generated OpenAPI. |
+| Frontend | **React + Vite + TypeScript** | SPA + PWA (vite-plugin-pwa). **Owns the recommendation engine** (pure TS module over the cached catalog + wallet). State: TanStack Query for the catalog fetch; router: React Router. UI kit TBD during design. |
+| Backend | **Python + FastAPI** | Scope is narrow: serve/version the card catalog and host admin editing. Async, typed (Pydantic v2), auto-generated OpenAPI. No recommendation logic, no user data. |
 | ORM / DB | SQLAlchemy 2.x + **PostgreSQL** | Alembic migrations. Card rules stored relationally (not JSON blobs) to keep them queryable and versionable. |
 | Auth | **None in MVP** | No login; wallet in browser localStorage. Phase 2 adds fastapi-users or custom JWT + Google OIDC (refresh token in httpOnly cookie). |
 | Client storage | Browser localStorage + PWA cache | Wallet, cap usage, activation, cpp overrides; export/import to a JSON file (WAL-7). |
@@ -248,17 +248,18 @@ Every step's inputs are retained in the response payload so the UI can render an
 
 ### 8.2 API sketch
 
-MVP endpoints are all anonymous and stateless — the client holds the wallet and passes it in.
+MVP endpoints are all anonymous and read-only. The client downloads the catalog once, caches it (PWA), and computes recommendations locally — so there is **no recommendation endpoint**.
 
 ```
-GET  /cards?query=&issuer=            # public card catalog (search/list)
-GET  /cards/{id}                      # card detail incl. current rules
-GET  /currencies                      # rewards currencies + default cpp
-POST /recommendations                 # body: {category, amount, wallet[], cppOverrides} -> owned-card ranking
+GET  /catalog?since=<version>         # full catalog bundle (cards, rules,
+                                      #   rotations, currencies) + version tag;
+                                      #   client caches it and re-fetches only
+                                      #   when the version advances
+GET  /cards/{id}                      # optional: single card detail (deep links)
 /admin/**                             # internal, role-gated (card DB editing)
 ```
 
-The wallet, cap usage, activation state, and cpp overrides live in the browser; there are no `/auth/*` or `/wallet/*` endpoints in MVP. Those (and per-user `/settings`), plus `POST /suggestions` for new-card suggestions, arrive in Phase 2 with accounts and cloud sync.
+The catalog is **versioned** (e.g. a monotonically increasing `version` / ETag) so the PWA can cheaply check for updates and invalidate its cache. The wallet, cap usage, activation state, and cpp overrides live only in the browser and are **never sent to the server**. There are no `/auth/*`, `/wallet/*`, or `/recommendations` endpoints in MVP. Accounts, cloud sync, per-user `/settings`, and `POST /suggestions` (new-card suggestions) arrive in Phase 2.
 
 ### 8.3 Repository layout (proposed)
 
@@ -307,4 +308,4 @@ No monetization work is planned until the recommendation core proves retention.
 
 ---
 
-*Prepared with the product owner's decisions of 2026-07-04, updated 2026-07-06: US market · user-selected spending categories · **MVP does owned-card recommendation only; new-card suggestions deferred to Phase 2** · self-built card database (~30 cards, Chase/Amex/Citi first) · cash-value normalization with user-adjustable point valuations · FastAPI backend · responsive web/PWA first · **MVP has no login — wallet stored locally in the browser; accounts + Google OAuth + cloud sync moved to Phase 2** · merchant-level exception caveats in MVP, MCC engine in Phase 2 · rotating categories and caps in MVP · annual fee in suggestion math, welcome bonus displayed separately · monetization deferred.*
+*Prepared with the product owner's decisions of 2026-07-04, updated 2026-07-06: US market · user-selected spending categories · **MVP does owned-card recommendation only; new-card suggestions deferred to Phase 2** · self-built card database (~30 cards, Chase/Amex/Citi first) · cash-value normalization with user-adjustable point valuations · FastAPI backend · responsive web/PWA first · **MVP has no login — wallet stored locally in the browser and recommendations computed client-side (backend only distributes the card catalog + hosts admin); accounts + Google OAuth + cloud sync moved to Phase 2** · merchant-level exception caveats in MVP, MCC engine in Phase 2 · rotating categories and caps in MVP · annual fee in suggestion math, welcome bonus displayed separately · monetization deferred.*
