@@ -70,7 +70,7 @@ A later phase extends this into travel: choosing the best card **combination** w
    - For the selected category (or the user's overall category mix), show top cards *not* in the wallet, ranked by incremental long-term value (annual fee included; welcome bonus shown separately).
 
 4. **Card database (curated, self-built)**
-   - Internal admin tooling to maintain ~50–100 popular US cards and their reward rules.
+   - Internal admin tooling to maintain the top ~30 popular US cards (prioritizing Chase, Amex, and Citi) and their reward rules.
 
 5. **Points valuation settings**
    - Default cent-per-point values per currency; user can override.
@@ -138,7 +138,7 @@ A later phase extends this into travel: choosing the best card **combination** w
 | ADM-1 | Admin users can create/update/retire cards and their reward rules through an internal interface (can be a simple admin UI or authenticated API + scripts in MVP). |
 | ADM-2 | Rule changes are versioned with an effective date, so recommendations use the rules in force today. |
 | ADM-3 | Quarterly rotating calendars (e.g. Discover it, Chase Freedom Flex) are maintained per card per quarter. |
-| ADM-4 | Initial dataset: top 50–100 US consumer cards by popularity across major issuers (Chase, Amex, Citi, Capital One, Discover, Bank of America, Wells Fargo, US Bank). |
+| ADM-4 | Initial dataset: top ~30 US consumer cards by popularity, prioritizing **Chase, Amex, and Citi**. Other issuers (Capital One, Discover, Bank of America, Wells Fargo, US Bank) are added in later iterations. |
 
 ---
 
@@ -266,7 +266,7 @@ No monetization work is planned until the recommendation core proves retention.
 | Phase | Scope | Rough target |
 |---|---|---|
 | **M0** | Repo scaffolding, CI, data model, seed 20 cards | Weeks 1–2 |
-| **M1 (MVP)** | Auth, wallet, owned-card recommendation, valuations, 50+ cards, admin tooling, PWA shell | Weeks 3–8 |
+| **M1 (MVP)** | Auth, wallet, owned-card recommendation, valuations, ~30 cards (Chase/Amex/Citi), admin tooling, PWA shell | Weeks 3–8 |
 | **M2** | New-card suggestions, spend-profile dashboard, rotation reminders | Weeks 9–12 |
 | **M3** | Travel booking optimizer (discovery + design spike first), native app decision, affiliate exploration | Q4 2026 |
 
