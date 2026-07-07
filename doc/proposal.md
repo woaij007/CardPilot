@@ -70,11 +70,13 @@ A later phase extends this into travel: choosing the best card **combination** w
    - Correctly handles fixed multipliers, quarterly rotating categories, and spending caps.
 
 3. **Card database (curated, self-built)**
-   - Internal admin tooling to maintain the top ~30 popular US cards (prioritizing Chase, Amex, and Citi) and their reward rules.
+   - Internal admin tooling to maintain the reward rules. Seeded first with the product owner's own cards (M0), then grown to the **top ~50 mainstream US cards** (M1).
 
 4. **Points valuation settings**
    - Default cent-per-point values per currency; user can override.
 
+> **MVP is for internal testing / dogfooding first**, not a public launch. Success is judged by hands-on use, not product metrics — there is no KPI framework or usage analytics in MVP.
+>
 > New-card suggestions ("which card should I apply for?") are **not** in MVP — see §3.2 Phase 2.
 
 ### 3.2 Phase 2
@@ -142,7 +144,7 @@ _Deferred to Phase 2 (§3.2)._ Specced here for completeness; not built in MVP.
 | ADM-1 | Admin users can create/update/retire cards and their reward rules through an internal interface (can be a simple admin UI or authenticated API + scripts in MVP). |
 | ADM-2 | Rule changes are versioned with an effective date, so recommendations use the rules in force today. |
 | ADM-3 | Quarterly rotating calendars (e.g. Discover it, Chase Freedom Flex) are maintained per card per quarter. |
-| ADM-4 | Initial dataset: top ~30 US consumer cards by popularity, prioritizing **Chase, Amex, and Citi**. Other issuers (Capital One, Discover, Bank of America, Wells Fargo, US Bank) are added in later iterations. |
+| ADM-4 | Dataset is seeded in phases: **M0** — the product owner's own cards (enough to dogfood the flow end to end); **M1** — the **top ~50 mainstream US consumer cards** by popularity across major issuers (Chase, Amex, Citi, Capital One, Discover, Bank of America, Wells Fargo, US Bank). |
 | ADM-5 | Admins can attach `merchant_exceptions` (included/excluded merchant lists + a human-readable note) to any reward rule, so cards with special MCC scoping (e.g. Amex Gold groceries excluding Walmart/Target) carry accurate caveats. |
 
 ---
@@ -288,8 +290,8 @@ No monetization work is planned until the recommendation core proves retention.
 
 | Phase | Scope | Rough target |
 |---|---|---|
-| **M0** | Repo scaffolding, CI, data model, seed 20 cards | Weeks 1–2 |
-| **M1 (MVP)** | Local wallet (no login), owned-card recommendation, valuations, ~30 cards (Chase/Amex/Citi), admin tooling, PWA shell | Weeks 3–8 |
+| **M0** | Repo scaffolding, CI, data model, seed the product owner's own cards | Weeks 1–2 |
+| **M1 (MVP)** | Local wallet (no login), client-side owned-card recommendation, valuations, **~50 mainstream cards**, admin tooling, PWA shell | Weeks 3–8 |
 | **M2** | New-card suggestions, spend-profile dashboard, rotation reminders, **accounts + cloud sync** (migrate local wallets) | Weeks 9–12 |
 | **M3** | Travel booking optimizer (discovery + design spike first), native app decision, affiliate exploration | Q4 2026 |
 
@@ -308,4 +310,4 @@ No monetization work is planned until the recommendation core proves retention.
 
 ---
 
-*Prepared with the product owner's decisions of 2026-07-04, updated 2026-07-06: US market · user-selected spending categories · **MVP does owned-card recommendation only; new-card suggestions deferred to Phase 2** · self-built card database (~30 cards, Chase/Amex/Citi first) · cash-value normalization with user-adjustable point valuations · FastAPI backend · responsive web/PWA first · **MVP has no login — wallet stored locally in the browser and recommendations computed client-side (backend only distributes the card catalog + hosts admin); accounts + Google OAuth + cloud sync moved to Phase 2** · merchant-level exception caveats in MVP, MCC engine in Phase 2 · rotating categories and caps in MVP · annual fee in suggestion math, welcome bonus displayed separately · monetization deferred.*
+*Prepared with the product owner's decisions of 2026-07-04, updated 2026-07-06: US market · user-selected spending categories · **MVP does owned-card recommendation only; new-card suggestions deferred to Phase 2** · self-built card database (M0 seeds the owner's own cards, M1 grows to ~50 mainstream cards) · internal-testing/dogfood MVP, no KPI/analytics · cash-value normalization with user-adjustable point valuations · FastAPI backend · responsive web/PWA first · **MVP has no login — wallet stored locally in the browser and recommendations computed client-side (backend only distributes the card catalog + hosts admin); accounts + Google OAuth + cloud sync moved to Phase 2** · merchant-level exception caveats in MVP, MCC engine in Phase 2 · rotating categories and caps in MVP · annual fee in suggestion math, welcome bonus displayed separately · monetization deferred.*
