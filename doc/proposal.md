@@ -5,6 +5,7 @@
 | **Product** | CardPilot |
 | **Version** | 0.1 (Draft) |
 | **Date** | 2026-07-04 |
+| **Last updated** | 2026-07-06 |
 | **Status** | Proposal — pending review |
 | **Target market** | United States |
 
@@ -28,9 +29,9 @@ A later phase extends this into travel: choosing the best card **combination** w
 
 ### 1.2 Goals
 
-1. Give an instant, correct "best card for this purchase" answer among the user's own cards.
-2. Quantify the opportunity: show what a new card would add, in dollars.
-3. Keep the reward-rule database accurate and current for the most popular US cards.
+1. Give an instant, correct "best card for this purchase" answer among the user's own cards (MVP).
+2. Keep the reward-rule database accurate and current for the most popular US cards (MVP).
+3. Later (Phase 2): quantify the opportunity — show what a new card would add, in dollars.
 
 ### 1.3 Non-goals (for MVP)
 
@@ -118,10 +119,10 @@ _Deferred to Phase 2._ MVP has **no login**: the app works anonymously and the w
 | REC-1 | User selects one spending category from a fixed taxonomy (see §5.1); amount is optional (default $100 for illustration). |
 | REC-2 | System returns the user's cards ranked by effective cash reward for that purchase (see §6 algorithm). |
 | REC-3 | Each result shows: earn rate (e.g. "4× MR"), rewards currency, effective cash value in dollars and as a %, and any caveats (cap nearly exhausted, category not activated, portal-only rate, **merchant exceptions** such as "Walmart/Target excluded from Groceries", etc.). |
-| REC-7 | When a card's applicable rule carries `merchant_exceptions`, the recommendation surfaces the exception note as a caveat. MVP does not auto-detect the actual merchant's MCC; the ranking uses the friendly category rate and the user judges applicability. |
 | REC-4 | If a cap would be crossed mid-purchase, the value is prorated (pre-cap rate up to the cap, post-cap rate beyond) and the result is annotated. |
 | REC-5 | A rotating category that is not activated is ranked at its base rate, with a prompt to activate. |
-| REC-6 | Response is deterministic and explainable: the UI can show "why" for every ranking. |
+| REC-6 | When a card's applicable rule carries `merchant_exceptions`, the recommendation surfaces the exception note as a caveat. MVP does not auto-detect the actual merchant's MCC; the ranking uses the friendly category rate and the user judges applicability. |
+| REC-7 | Response is deterministic and explainable: the UI can show "why" for every ranking. |
 
 ### 4.4 New-card suggestions (Phase 2 — not in MVP)
 
@@ -302,7 +303,7 @@ No monetization work is planned until the recommendation core proves retention.
 | 3 | **Category ambiguity / special MCC scoping**: a purchase's real MCC may not match the user's chosen category, and cards scope bonuses to different MCC sets (e.g. Amex Gold groceries excludes Walmart/Target). | MVP: `merchant_exceptions` on reward rules surfaced as caveats (§5.1, §4.3 REC-7, §4.5 ADM-5). Phase 2: automatic MCC-resolution engine (§3.2). |
 | 4 | **Legal/compliance**: card marks/images, trademark use, and (later) affiliate advertising rules. | Use editorial descriptions + issuer-provided art guidelines; legal review before any affiliate launch. |
 | 5 | Default cpp valuations are editorial opinions. | Publish methodology; allow user overrides (already in scope). |
-| 6 | Naming: repo is `CardPilot`, product is `CardPilot`. | Decide canonical name before public launch; check domain/trademark availability. |
+| 6 | **Naming / brand availability**: product and repo are both `CardPilot`, but domain and trademark are unverified. | Check domain and trademark availability before public launch; confirm no conflict with existing "…Pilot" fintech products. |
 
 ---
 
