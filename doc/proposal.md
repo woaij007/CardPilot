@@ -255,15 +255,16 @@ Every step's inputs are retained in the computed result so the UI can render an 
 MVP endpoints are all anonymous and read-only. The client downloads the catalog once, caches it (PWA), and computes recommendations locally — so there is **no recommendation endpoint**.
 
 ```
-GET  /catalog?since=<version>         # full catalog bundle (cards, rules,
-                                      #   rotations, currencies) + version tag;
-                                      #   client caches it and re-fetches only
-                                      #   when the version advances
+GET  /catalog?since=<version>         # if the catalog is newer than <version>,
+                                      #   return the FULL bundle (cards, rules,
+                                      #   rotations, currencies) + new version tag;
+                                      #   otherwise 304 Not Modified. Omit `since`
+                                      #   for a first, unconditional full fetch.
 GET  /cards/{id}                      # optional: single card detail (deep links)
 /admin/**                             # internal, role-gated (card DB editing)
 ```
 
-The catalog is **versioned** (e.g. a monotonically increasing `version` / ETag) so the PWA can cheaply check for updates and invalidate its cache. The wallet, cap usage, activation state, and cpp overrides live only in the browser and are **never sent to the server**. There are no `/auth/*`, `/wallet/*`, or `/recommendations` endpoints in MVP. Accounts, cloud sync, per-user `/settings`, and `POST /suggestions` (new-card suggestions) arrive in Phase 2.
+The catalog is **versioned** (e.g. a monotonically increasing `version` / ETag). `since` is a conditional-fetch guard, not a delta request: the response is always the whole bundle (small dataset) or a `304`, so the PWA cheaply checks for updates and invalidates its cache. The wallet, cap usage, activation state, and cpp overrides live only in the browser and are **never sent to the server**. There are no `/auth/*`, `/wallet/*`, or `/recommendations` endpoints in MVP. Accounts, cloud sync, per-user `/settings`, and `POST /suggestions` (new-card suggestions) arrive in Phase 2.
 
 ### 8.3 Repository layout (proposed)
 
