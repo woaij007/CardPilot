@@ -113,6 +113,7 @@ _Deferred to Phase 2._ MVP has **no login**: the app works anonymously and the w
 | WAL-5 | User can override the default point valuation per rewards currency (cents per point). |
 | WAL-6 | The entire wallet (WAL-1…WAL-5 state) persists in browser localStorage; no server-side account is involved. The user can clear it, and clearing browser data resets the wallet. |
 | WAL-7 | The user can export their wallet to a file and import it, so they can move it between browsers/devices without an account. |
+| WAL-8 | First run / empty wallet shows an onboarding empty state that explains the app in one line and guides the user straight into adding their first card; the recommendation screen is disabled (with a prompt to add cards) until at least one card is in the wallet. |
 
 ### 4.3 Best-card recommendation — owned cards (MVP)
 
@@ -175,7 +176,7 @@ For MVP, CardPilot does **not** build a full MCC-resolution engine. Instead, eac
 Card            id, name, issuer, network, annual_fee, rewards_currency,
                 welcome_bonus (amount, spend_req, window), status, image
 RewardRule      id, card_id, category, multiplier, unit (points|% cash),
-                cap_amount, cap_period (quarterly|annual|none),
+                cap_amount, cap_period (monthly|quarterly|annual|none),
                 post_cap_multiplier, requires_activation,
                 channel_constraint (e.g. portal-only),
                 merchant_exceptions (JSON: included[], excluded[], note),
@@ -228,6 +229,7 @@ Every step's inputs are retained in the computed result so the UI can render an 
 | Security | HTTPS only; no card *numbers* are ever collected — CardPilot stores card *products*, not PANs. This should be stated prominently in the UI. No credentials are handled in MVP (no login). Auth security (password hashing with argon2/bcrypt, OIDC flow, session tokens) is specified for Phase 2 when accounts land. |
 | Privacy | MVP stores **no personal data server-side** and the wallet **never leaves the device** — recommendations are computed locally, so no wallet data is sent to the API at all. The only client→server traffic is anonymous catalog fetches. No sale of data. |
 | Data accuracy | Every card page shows "rules last verified" date; a disclaimer notes terms can change and the issuer's terms control. Editorial review cadence: monthly, plus quarterly rotation updates. |
+| Disclaimers | A persistent, plain-language disclaimer states CardPilot is **informational only and not financial advice**, that reward values are estimates based on editorial point valuations, and that the issuer's current terms always control. Shown on recommendation results and card pages. |
 | Compatibility | Responsive web, mobile-first; PWA installable (manifest + service worker, offline shell with cached card DB read-only). Evergreen browsers. |
 | i18n | English-only UI for MVP; copy externalized to allow future localization. |
 | Accessibility | WCAG 2.1 AA targets for core flows. |
@@ -304,7 +306,7 @@ No monetization work is planned until the recommendation core proves retention.
 | 1 | **Data freshness**: reward rules change without notice; stale data destroys trust. | Verified-date on every card, monthly review cadence, community "report an error" button. |
 | 2 | **Rule-model completeness**: some cards have exotic structures (BoA Preferred Rewards tiers, Amex portal-only 5×, choose-your-own-category cards like Custom Cash). | The rule schema (§5.2) covers caps/rotation/activation/channel; tiered-multiplier support (e.g. relationship bonuses) is explicitly deferred — confirm acceptable for MVP. |
 | 3 | **Category ambiguity / special MCC scoping**: a purchase's real MCC may not match the user's chosen category, and cards scope bonuses to different MCC sets (e.g. Amex Gold groceries excludes Walmart/Target). | MVP: `merchant_exceptions` on reward rules surfaced as caveats (§5.1, §4.3 REC-7, §4.5 ADM-5). Phase 2: automatic MCC-resolution engine (§3.2). |
-| 4 | **Legal/compliance**: card marks/images, trademark use, and (later) affiliate advertising rules. | Use editorial descriptions + issuer-provided art guidelines; legal review before any affiliate launch. |
+| 4 | **Legal/compliance**: recommending financial products; card marks/images, trademark use, and (later) affiliate advertising rules. | Persistent "informational only, not financial advice" disclaimer (§7 Disclaimers); editorial descriptions + issuer-provided art guidelines; legal review before any affiliate launch. |
 | 5 | Default cpp valuations are editorial opinions. | Publish methodology; allow user overrides (already in scope). |
 | 6 | **Naming / brand availability**: product and repo are both `CardPilot`, but domain and trademark are unverified. | Check domain and trademark availability before public launch; confirm no conflict with existing "…Pilot" fintech products. |
 
