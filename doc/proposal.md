@@ -16,7 +16,7 @@ CardPilot is a web application (responsive web + PWA first, native mobile app la
 
 > **"Which of my cards should I use for this purchase?"**
 
-The user selects a **spending category** (dining, groceries, gas, online shopping, travel, etc. — user-facing categories, not raw MCC codes), and CardPilot ranks the user's own cards by real reward value for that purchase. Beyond the user's wallet, CardPilot also surfaces **cards worth applying for** — showing how much more the user would earn on the same spending if they held a given card.
+The user selects a **spending category** (dining, groceries, gas, online shopping, travel, etc. — user-facing categories, not raw MCC codes), and CardPilot ranks the user's own cards by real reward value for that purchase. In a later phase, CardPilot will also surface **cards worth applying for** — showing how much more the user would earn on the same spending if they held a given card.
 
 A later phase extends this into travel: choosing the best card **combination** when booking hotels and flights, taking card-specific benefits (travel credits, free-night certificates, transfer partners, protections) into account.
 
@@ -35,6 +35,7 @@ A later phase extends this into travel: choosing the best card **combination** w
 ### 1.3 Non-goals (for MVP)
 
 - User accounts, login, and cloud sync (wallet is local-only; accounts land in Phase 2).
+- New-card suggestions / "which card should I apply for?" (Phase 2).
 - Transaction syncing / bank account linking (Plaid etc.).
 - Automatic MCC detection at point of sale.
 - Non-US card ecosystems.
@@ -67,17 +68,17 @@ A later phase extends this into travel: choosing the best card **combination** w
    - System ranks the user's cards by **effective cash value** for that purchase.
    - Correctly handles fixed multipliers, quarterly rotating categories, and spending caps.
 
-3. **New-card suggestions**
-   - For the selected category (or the user's overall category mix), show top cards *not* in the wallet, ranked by incremental long-term value (annual fee included; welcome bonus shown separately).
-
-4. **Card database (curated, self-built)**
+3. **Card database (curated, self-built)**
    - Internal admin tooling to maintain the top ~30 popular US cards (prioritizing Chase, Amex, and Citi) and their reward rules.
 
-5. **Points valuation settings**
+4. **Points valuation settings**
    - Default cent-per-point values per currency; user can override.
+
+> New-card suggestions ("which card should I apply for?") are **not** in MVP — see §3.2 Phase 2.
 
 ### 3.2 Phase 2
 
+- **New-card suggestions**: for the selected category (or the user's overall category mix), show top cards *not* in the wallet, ranked by incremental long-term value (annual fee included; welcome bonus shown separately). See §4.4 for the detailed spec.
 - **User accounts & cloud sync**: email + password and Google OAuth sign-in, with the wallet stored server-side and synced across devices. Existing local wallets are migrated into the account on first sign-in.
 - Spending-profile dashboard: user enters approximate monthly spend per category → annualized "wallet report card" and optimization suggestions.
 - Rotating-category activation reminders (email / push via PWA).
@@ -122,14 +123,16 @@ _Deferred to Phase 2._ MVP has **no login**: the app works anonymously and the w
 | REC-5 | A rotating category that is not activated is ranked at its base rate, with a prompt to activate. |
 | REC-6 | Response is deterministic and explainable: the UI can show "why" for every ranking. |
 
-### 4.4 New-card suggestions (MVP)
+### 4.4 New-card suggestions (Phase 2 — not in MVP)
+
+_Deferred to Phase 2 (§3.2)._ Specced here for completeness; not built in MVP.
 
 | ID | Requirement |
 |---|---|
 | SUG-1 | For the selected category, show up to N (default 3) cards not in the user's wallet with a higher effective rate than the user's current best card. |
 | SUG-2 | Ranking metric is **incremental annual value = (candidate's category earnings − user's current best earnings) − annual fee**, computed against the user's stated or assumed category spend. Welcome bonus is **displayed separately** and never included in the ranking score. |
 | SUG-3 | Each suggestion shows: annual fee, earn structure for the category, welcome bonus (headline + spend requirement), and the break-even monthly spend at which the card beats the user's current best. |
-| SUG-4 | Suggestions are informational only in MVP — no application links, no affiliate tracking. |
+| SUG-4 | Suggestions are informational only — no application links, no affiliate tracking (see §9 for future monetization). |
 
 ### 4.5 Card database administration (MVP, internal)
 
@@ -207,7 +210,7 @@ The recommendation endpoint is **stateless**: the client sends the purchase (`am
 4. **Convert to cash**: `value_$ = earned_points × cpp(currency) / 100` (cashback uses cpp = 1.0).
 5. **Rank** by `value_$` descending. Ties break by (a) no caveats first, (b) lower annual fee.
 
-Annual fees are **not** part of the per-purchase ranking of owned cards (the fee is sunk once the card is held). Fees enter only the new-card suggestion metric (§4.4 SUG-2).
+Annual fees are **not** part of the per-purchase ranking of owned cards (the fee is sunk once the card is held). Fees enter only the Phase 2 new-card suggestion metric (§4.4 SUG-2).
 
 Every step's inputs are retained in the response payload so the UI can render an explanation ("2,000 pts × 1.6¢ = $32; $500 of quarterly cap remaining").
 
@@ -251,11 +254,10 @@ GET  /cards?query=&issuer=            # public card catalog (search/list)
 GET  /cards/{id}                      # card detail incl. current rules
 GET  /currencies                      # rewards currencies + default cpp
 POST /recommendations                 # body: {category, amount, wallet[], cppOverrides} -> owned-card ranking
-POST /suggestions                     # body: {category, monthlySpend, wallet[], cppOverrides} -> new-card suggestions
 /admin/**                             # internal, role-gated (card DB editing)
 ```
 
-The wallet, cap usage, activation state, and cpp overrides live in the browser; there are no `/auth/*` or `/wallet/*` endpoints in MVP. Those (and per-user `/settings`) arrive in Phase 2 with accounts and cloud sync.
+The wallet, cap usage, activation state, and cpp overrides live in the browser; there are no `/auth/*` or `/wallet/*` endpoints in MVP. Those (and per-user `/settings`), plus `POST /suggestions` for new-card suggestions, arrive in Phase 2 with accounts and cloud sync.
 
 ### 8.3 Repository layout (proposed)
 
@@ -304,4 +306,4 @@ No monetization work is planned until the recommendation core proves retention.
 
 ---
 
-*Prepared with the product owner's decisions of 2026-07-04, updated 2026-07-06: US market · user-selected spending categories · owned-card + new-card recommendations · self-built card database (~30 cards, Chase/Amex/Citi first) · cash-value normalization with user-adjustable point valuations · FastAPI backend · responsive web/PWA first · **MVP has no login — wallet stored locally in the browser; accounts + Google OAuth + cloud sync moved to Phase 2** · merchant-level exception caveats in MVP, MCC engine in Phase 2 · rotating categories and caps in MVP · annual fee in suggestion math, welcome bonus displayed separately · monetization deferred.*
+*Prepared with the product owner's decisions of 2026-07-04, updated 2026-07-06: US market · user-selected spending categories · **MVP does owned-card recommendation only; new-card suggestions deferred to Phase 2** · self-built card database (~30 cards, Chase/Amex/Citi first) · cash-value normalization with user-adjustable point valuations · FastAPI backend · responsive web/PWA first · **MVP has no login — wallet stored locally in the browser; accounts + Google OAuth + cloud sync moved to Phase 2** · merchant-level exception caveats in MVP, MCC engine in Phase 2 · rotating categories and caps in MVP · annual fee in suggestion math, welcome bonus displayed separately · monetization deferred.*
