@@ -79,6 +79,7 @@ A later phase extends this into travel: choosing the best card **combination** w
 
 - Spending-profile dashboard: user enters approximate monthly spend per category → annualized "wallet report card" and optimization suggestions.
 - Rotating-category activation reminders (email / push via PWA).
+- **MCC-resolution engine**: automatically map a specific merchant to its MCC and each card's precise inclusion/exclusion rules, removing the need for the user to judge merchant-level exceptions manually.
 - Native mobile app (React Native/Expo) if PWA proves insufficient.
 
 ### 3.3 Future (exploratory)
@@ -117,7 +118,8 @@ A later phase extends this into travel: choosing the best card **combination** w
 |---|---|
 | REC-1 | User selects one spending category from a fixed taxonomy (see §5.1); amount is optional (default $100 for illustration). |
 | REC-2 | System returns the user's cards ranked by effective cash reward for that purchase (see §6 algorithm). |
-| REC-3 | Each result shows: earn rate (e.g. "4× MR"), rewards currency, effective cash value in dollars and as a %, and any caveats (cap nearly exhausted, category not activated, portal-only rate, etc.). |
+| REC-3 | Each result shows: earn rate (e.g. "4× MR"), rewards currency, effective cash value in dollars and as a %, and any caveats (cap nearly exhausted, category not activated, portal-only rate, **merchant exceptions** such as "Walmart/Target excluded from Groceries", etc.). |
+| REC-7 | When a card's applicable rule carries `merchant_exceptions`, the recommendation surfaces the exception note as a caveat. MVP does not auto-detect the actual merchant's MCC; the ranking uses the friendly category rate and the user judges applicability. |
 | REC-4 | If a cap would be crossed mid-purchase, the value is prorated (pre-cap rate up to the cap, post-cap rate beyond) and the result is annotated. |
 | REC-5 | A rotating category that is not activated is ranked at its base rate, with a prompt to activate. |
 | REC-6 | Response is deterministic and explainable: the UI can show "why" for every ranking. |
@@ -139,6 +141,7 @@ A later phase extends this into travel: choosing the best card **combination** w
 | ADM-2 | Rule changes are versioned with an effective date, so recommendations use the rules in force today. |
 | ADM-3 | Quarterly rotating calendars (e.g. Discover it, Chase Freedom Flex) are maintained per card per quarter. |
 | ADM-4 | Initial dataset: top ~30 US consumer cards by popularity, prioritizing **Chase, Amex, and Citi**. Other issuers (Capital One, Discover, Bank of America, Wells Fargo, US Bank) are added in later iterations. |
+| ADM-5 | Admins can attach `merchant_exceptions` (included/excluded merchant lists + a human-readable note) to any reward rule, so cards with special MCC scoping (e.g. Amex Gold groceries excluding Walmart/Target) carry accurate caveats. |
 
 ---
 
@@ -152,6 +155,14 @@ A fixed, curated list — not raw MCC. Initial set:
 
 Each category maps internally to the MCC groups issuers actually use; the mapping lives in the card database, not in the UI. The taxonomy is versioned and extensible.
 
+**Merchant-level exceptions.** A single friendly category (e.g. `Groceries`) does *not* cover the same merchants on every card. Issuers scope bonus earning to specific MCCs with their own inclusions/exclusions, for example:
+
+- Amex Gold "U.S. supermarkets" (MCC 5411) **excludes** Walmart, Target, and warehouse clubs.
+- Blue Cash "U.S. gas stations" excludes fuel bought inside superstores/warehouse clubs.
+- Co-branded cards earn at named merchants (e.g. Amazon Prime card: 5% at Amazon and Whole Foods).
+
+For MVP, CardPilot does **not** build a full MCC-resolution engine. Instead, each reward rule can carry **merchant-level exception notes** (see `merchant_exceptions` in §5.2) that are surfaced as caveats in recommendations and on card pages (e.g. "Walmart/Target usually don't count as Groceries on this card"). The user remains responsible for judging whether a specific merchant qualifies. A precise, automatic MCC-resolution engine is deferred to Phase 2 (§3.2).
+
 ### 5.2 Core entities
 
 ```
@@ -162,7 +173,9 @@ Card            id, name, issuer, network, annual_fee, rewards_currency,
 RewardRule      id, card_id, category, multiplier, unit (points|% cash),
                 cap_amount, cap_period (quarterly|annual|none),
                 post_cap_multiplier, requires_activation,
-                channel_constraint (e.g. portal-only), effective_from/to
+                channel_constraint (e.g. portal-only),
+                merchant_exceptions (JSON: included[], excluded[], note),
+                effective_from/to
 RotationEntry   card_id, year, quarter, categories[]
 RewardsCurrency id, name (MR, UR, TYP, C1 miles, cash…), default_cpp
 WalletEntry     user_id, card_id, added_at
@@ -278,7 +291,7 @@ No monetization work is planned until the recommendation core proves retention.
 |---|---|---|
 | 1 | **Data freshness**: reward rules change without notice; stale data destroys trust. | Verified-date on every card, monthly review cadence, community "report an error" button. |
 | 2 | **Rule-model completeness**: some cards have exotic structures (BoA Preferred Rewards tiers, Amex portal-only 5×, choose-your-own-category cards like Custom Cash). | The rule schema (§5.2) covers caps/rotation/activation/channel; tiered-multiplier support (e.g. relationship bonuses) is explicitly deferred — confirm acceptable for MVP. |
-| 3 | **Category ambiguity**: a purchase's real MCC may not match the user's chosen category (e.g. Walmart groceries codes as discount store). | Show MCC caveats on category pages ("Walmart usually doesn't count as Groceries"). |
+| 3 | **Category ambiguity / special MCC scoping**: a purchase's real MCC may not match the user's chosen category, and cards scope bonuses to different MCC sets (e.g. Amex Gold groceries excludes Walmart/Target). | MVP: `merchant_exceptions` on reward rules surfaced as caveats (§5.1, §4.3 REC-7, §4.5 ADM-5). Phase 2: automatic MCC-resolution engine (§3.2). |
 | 4 | **Legal/compliance**: card marks/images, trademark use, and (later) affiliate advertising rules. | Use editorial descriptions + issuer-provided art guidelines; legal review before any affiliate launch. |
 | 5 | Default cpp valuations are editorial opinions. | Publish methodology; allow user overrides (already in scope). |
 | 6 | Naming: repo is `CardPilot`, product is `CardPilot`. | Decide canonical name before public launch; check domain/trademark availability. |
