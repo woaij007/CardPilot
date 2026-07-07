@@ -304,7 +304,7 @@ No monetization work is planned until the recommendation core proves retention.
 
 | # | Risk / question | Mitigation / next step |
 |---|---|---|
-| 1 | **Data freshness**: reward rules change without notice; stale data destroys trust. | Verified-date on every card, monthly review cadence, community "report an error" button. |
+| 1 | **Data freshness**: reward rules change without notice; stale data destroys trust. | Verified-date on every card, monthly review cadence. During internal testing the owner edits rules directly via admin; a community "report an error" button is added post-launch when there are external users. |
 | 2 | **Rule-model completeness**: some cards have exotic structures (BoA Preferred Rewards tiers, Amex portal-only 5×, choose-your-own-category cards like Custom Cash). | The rule schema (§5.2) covers caps/rotation/activation/channel; tiered-multiplier support (e.g. relationship bonuses) is explicitly deferred — confirm acceptable for MVP. |
 | 3 | **Category ambiguity / special MCC scoping**: a purchase's real MCC may not match the user's chosen category, and cards scope bonuses to different MCC sets (e.g. Amex Gold groceries excludes Walmart/Target). | MVP: `merchant_exceptions` on reward rules surfaced as caveats (§5.1, §4.3 REC-6, §4.5 ADM-5). Phase 2: automatic MCC-resolution engine (§3.2). |
 | 4 | **Legal/compliance**: recommending financial products; card marks/images, trademark use, and (later) affiliate advertising rules. | Persistent "informational only, not financial advice" disclaimer (§7 Disclaimers); editorial descriptions + issuer-provided art guidelines; legal review before any affiliate launch. |
