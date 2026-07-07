@@ -34,6 +34,7 @@ A later phase extends this into travel: choosing the best card **combination** w
 
 ### 1.3 Non-goals (for MVP)
 
+- User accounts, login, and cloud sync (wallet is local-only; accounts land in Phase 2).
 - Transaction syncing / bank account linking (Plaid etc.).
 - Automatic MCC detection at point of sale.
 - Non-US card ecosystems.
@@ -56,10 +57,10 @@ A later phase extends this into travel: choosing the best card **combination** w
 
 ### 3.1 MVP (Phase 1)
 
-1. **Account & wallet**
-   - Sign up / sign in with email + password and Google OAuth.
+1. **Wallet (local, no login)**
+   - No account or sign-in in MVP. The app is usable immediately.
    - User adds cards to their wallet by searching the CardPilot card database.
-   - Wallet is stored server-side and syncs across devices.
+   - Wallet — held cards, cap-usage entries, activation states, and point-valuation overrides — is stored in the browser's **localStorage**. No user data leaves the device except the stateless recommendation request.
 
 2. **Best-card recommendation (owned cards)**
    - User picks a spending category (and optionally an amount).
@@ -77,6 +78,7 @@ A later phase extends this into travel: choosing the best card **combination** w
 
 ### 3.2 Phase 2
 
+- **User accounts & cloud sync**: email + password and Google OAuth sign-in, with the wallet stored server-side and synced across devices. Existing local wallets are migrated into the account on first sign-in.
 - Spending-profile dashboard: user enters approximate monthly spend per category → annualized "wallet report card" and optimization suggestions.
 - Rotating-category activation reminders (email / push via PWA).
 - **MCC-resolution engine**: automatically map a specific merchant to its MCC and each card's precise inclusion/exclusion rules, removing the need for the user to judge merchant-level exceptions manually.
@@ -92,17 +94,11 @@ A later phase extends this into travel: choosing the best card **combination** w
 
 ## 4. Functional requirements
 
-### 4.1 Authentication & account (MVP)
+### 4.1 Authentication & account
 
-| ID | Requirement |
-|---|---|
-| AUTH-1 | Users can register and sign in with email + password. |
-| AUTH-2 | Users can sign in with Google OAuth; accounts with matching verified email are linked. |
-| AUTH-3 | Password reset via email. |
-| AUTH-4 | Sessions via short-lived JWT access token + refresh token (httpOnly cookie). |
-| AUTH-5 | Users can delete their account and all associated data. |
+_Deferred to Phase 2._ MVP has **no login**: the app works anonymously and the wallet lives in the browser (see §4.2). Email/password + Google OAuth accounts, cloud sync, and account deletion are specified for Phase 2 (§3.2), at which point local wallets migrate into the account on first sign-in.
 
-### 4.2 Wallet management (MVP)
+### 4.2 Wallet management (MVP — local storage)
 
 | ID | Requirement |
 |---|---|
@@ -111,6 +107,8 @@ A later phase extends this into travel: choosing the best card **combination** w
 | WAL-3 | For cards with spending caps, the user can manually record how much of a cap has been used (e.g. "$1,800 of $2,500 this year"). Cap usage resets automatically at the cap period boundary. |
 | WAL-4 | For rotating-category cards, the user can mark whether the current quarter's category is activated. |
 | WAL-5 | User can override the default point valuation per rewards currency (cents per point). |
+| WAL-6 | The entire wallet (WAL-1…WAL-5 state) persists in browser localStorage; no server-side account is involved. The user can clear it, and clearing browser data resets the wallet. |
+| WAL-7 | The user can export their wallet to a file and import it, so they can move it between browsers/devices without an account. |
 
 ### 4.3 Best-card recommendation — owned cards (MVP)
 
@@ -165,9 +163,9 @@ For MVP, CardPilot does **not** build a full MCC-resolution engine. Instead, eac
 
 ### 5.2 Core entities
 
+**Server-side (card catalog — read-only to clients):**
+
 ```
-User            id, email, auth_provider, created_at
-UserSettings    user_id, point_valuations_override (JSON)
 Card            id, name, issuer, network, annual_fee, rewards_currency,
                 welcome_bonus (amount, spend_req, window), status, image
 RewardRule      id, card_id, category, multiplier, unit (points|% cash),
@@ -178,22 +176,30 @@ RewardRule      id, card_id, category, multiplier, unit (points|% cash),
                 effective_from/to
 RotationEntry   card_id, year, quarter, categories[]
 RewardsCurrency id, name (MR, UR, TYP, C1 miles, cash…), default_cpp
-WalletEntry     user_id, card_id, added_at
-CapUsage        wallet_entry_id, rule_id, period_key, amount_used
-ActivationState wallet_entry_id, period_key, activated (bool)
 ```
+
+**Client-side (browser localStorage — the wallet, no server persistence in MVP):**
+
+```
+WalletEntry     card_id, added_at
+CapUsage        card_id, rule_id, period_key, amount_used
+ActivationState card_id, period_key, activated (bool)
+Settings        point_valuations_override (map: currency -> cpp)
+```
+
+The `User` / `UserSettings` server-side entities and the account linkage of the client-side wallet are introduced in Phase 2 (§3.2) when accounts and cloud sync land.
 
 ### 5.3 Points valuation
 
 - Every rewards currency has a **default cents-per-point (cpp)** value maintained by the CardPilot team (e.g. cash = 1.0, UR = 1.6, MR = 1.7, C1 = 1.5 — values to be set editorially and reviewed quarterly).
-- Users can override any currency's cpp in settings; overrides apply to all of that user's calculations.
+- Users can override any currency's cpp in settings; overrides are stored locally (browser) and applied to all of that user's calculations.
 - All comparisons and rankings are done in **dollars**, never in raw points.
 
 ---
 
 ## 6. Recommendation algorithm (MVP)
 
-For a purchase of amount `A` in category `C`, for each card in the wallet:
+The recommendation endpoint is **stateless**: the client sends the purchase (`amount A`, `category C`) together with its locally stored wallet — held card ids, cap-usage entries, activation states, and any cpp overrides. The server resolves rules from the card catalog and computes the ranking. For each card in the submitted wallet:
 
 1. **Resolve the applicable rule**: the rule for `C` effective today; for rotating cards, the current quarter's rotation entry; fall back to the card's base rate if no category rule matches.
 2. **Apply activation**: if the rule `requires_activation` and the user hasn't marked it activated, use the base rate and attach an "activate to earn X%" note.
@@ -212,9 +218,9 @@ Every step's inputs are retained in the response payload so the UI can render an
 | Area | Requirement |
 |---|---|
 | Performance | Recommendation endpoint p95 < 300 ms; recommendation math is pure computation over a small dataset — no external calls on the hot path. |
-| Availability | Single-region deployment acceptable for MVP; graceful degradation: read-only card browsing works without login. |
-| Security | Passwords hashed (argon2/bcrypt); OAuth via standard OIDC flow; HTTPS only; no card *numbers* are ever collected — CardPilot stores card *products*, not PANs. This should be stated prominently in the UI. |
-| Privacy | Only email + wallet composition + optional spend estimates are stored. Account deletion removes all user data. No sale of data. |
+| Availability | Single-region deployment acceptable for MVP; the whole app is usable with no login. Card browsing and the wallet work offline from the PWA cache; only fresh recommendations need the API. |
+| Security | HTTPS only; no card *numbers* are ever collected — CardPilot stores card *products*, not PANs. This should be stated prominently in the UI. No credentials are handled in MVP (no login). Auth security (password hashing with argon2/bcrypt, OIDC flow, session tokens) is specified for Phase 2 when accounts land. |
+| Privacy | MVP stores **no personal data server-side**: the wallet lives only in the user's browser. The stateless recommendation request carries wallet composition transiently and is not persisted or logged with identifiers. No sale of data. |
 | Data accuracy | Every card page shows "rules last verified" date; a disclaimer notes terms can change and the issuer's terms control. Editorial review cadence: monthly, plus quarterly rotation updates. |
 | Compatibility | Responsive web, mobile-first; PWA installable (manifest + service worker, offline shell with cached card DB read-only). Evergreen browsers. |
 | i18n | English-only UI for MVP; copy externalized to allow future localization. |
@@ -231,25 +237,25 @@ Every step's inputs are retained in the response payload so the UI can render an
 | Frontend | **React + Vite + TypeScript** | SPA + PWA (vite-plugin-pwa). State: TanStack Query for server state; router: React Router. UI kit TBD during design. |
 | Backend | **Python + FastAPI** | Async, typed (Pydantic v2), auto-generated OpenAPI. |
 | ORM / DB | SQLAlchemy 2.x + **PostgreSQL** | Alembic migrations. Card rules stored relationally (not JSON blobs) to keep them queryable and versionable. |
-| Auth | fastapi-users or custom JWT + Google OIDC | Refresh token in httpOnly cookie. |
+| Auth | **None in MVP** | No login; wallet in browser localStorage. Phase 2 adds fastapi-users or custom JWT + Google OIDC (refresh token in httpOnly cookie). |
+| Client storage | Browser localStorage + PWA cache | Wallet, cap usage, activation, cpp overrides; export/import to a JSON file (WAL-7). |
 | Admin | FastAPI-based admin (e.g. SQLAdmin) or minimal internal React pages | Enough for a small editorial team in MVP. |
 | Deployment | Docker; single VM or PaaS (Railway/Fly/Render) for MVP | CI: GitHub Actions — lint, typecheck, tests on PR. |
 
 ### 8.2 API sketch
 
+MVP endpoints are all anonymous and stateless — the client holds the wallet and passes it in.
+
 ```
-POST /auth/register | /auth/login | /auth/google | /auth/refresh
-GET  /cards?query=&issuer=            # public card catalog
+GET  /cards?query=&issuer=            # public card catalog (search/list)
 GET  /cards/{id}                      # card detail incl. current rules
-GET  /wallet                          # user's cards
-POST /wallet         DELETE /wallet/{cardId}
-PUT  /wallet/{cardId}/cap-usage
-PUT  /wallet/{cardId}/activation
-GET  /recommendations?category=&amount=      # owned-card ranking
-GET  /suggestions?category=&monthlySpend=    # new-card suggestions
-GET/PUT /settings/valuations
-/admin/**                              # internal, role-gated
+GET  /currencies                      # rewards currencies + default cpp
+POST /recommendations                 # body: {category, amount, wallet[], cppOverrides} -> owned-card ranking
+POST /suggestions                     # body: {category, monthlySpend, wallet[], cppOverrides} -> new-card suggestions
+/admin/**                             # internal, role-gated (card DB editing)
 ```
+
+The wallet, cap usage, activation state, and cpp overrides live in the browser; there are no `/auth/*` or `/wallet/*` endpoints in MVP. Those (and per-user `/settings`) arrive in Phase 2 with accounts and cloud sync.
 
 ### 8.3 Repository layout (proposed)
 
@@ -279,8 +285,8 @@ No monetization work is planned until the recommendation core proves retention.
 | Phase | Scope | Rough target |
 |---|---|---|
 | **M0** | Repo scaffolding, CI, data model, seed 20 cards | Weeks 1–2 |
-| **M1 (MVP)** | Auth, wallet, owned-card recommendation, valuations, ~30 cards (Chase/Amex/Citi), admin tooling, PWA shell | Weeks 3–8 |
-| **M2** | New-card suggestions, spend-profile dashboard, rotation reminders | Weeks 9–12 |
+| **M1 (MVP)** | Local wallet (no login), owned-card recommendation, valuations, ~30 cards (Chase/Amex/Citi), admin tooling, PWA shell | Weeks 3–8 |
+| **M2** | New-card suggestions, spend-profile dashboard, rotation reminders, **accounts + cloud sync** (migrate local wallets) | Weeks 9–12 |
 | **M3** | Travel booking optimizer (discovery + design spike first), native app decision, affiliate exploration | Q4 2026 |
 
 ---
@@ -298,4 +304,4 @@ No monetization work is planned until the recommendation core proves retention.
 
 ---
 
-*Prepared with the product owner's decisions of 2026-07-04: US market · user-selected spending categories · owned-card + new-card recommendations · self-built card database · cash-value normalization with user-adjustable point valuations · FastAPI backend · responsive web/PWA first · email + Google OAuth · rotating categories and caps in MVP · annual fee in suggestion math, welcome bonus displayed separately · monetization deferred.*
+*Prepared with the product owner's decisions of 2026-07-04, updated 2026-07-06: US market · user-selected spending categories · owned-card + new-card recommendations · self-built card database (~30 cards, Chase/Amex/Citi first) · cash-value normalization with user-adjustable point valuations · FastAPI backend · responsive web/PWA first · **MVP has no login — wallet stored locally in the browser; accounts + Google OAuth + cloud sync moved to Phase 2** · merchant-level exception caveats in MVP, MCC engine in Phase 2 · rotating categories and caps in MVP · annual fee in suggestion math, welcome bonus displayed separately · monetization deferred.*
