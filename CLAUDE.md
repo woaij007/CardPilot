@@ -56,6 +56,12 @@ ruff check . && mypy .          # lint + typecheck
 
 CI (GitHub Actions) runs lint, typecheck, and tests on PRs (§8.1). Update this section with the real scripts once `package.json` / `pyproject.toml` exist.
 
+## Git / commit discipline
+
+- **One logical change per commit.** After making an update, commit *that* change on its own before starting the next one. Do not batch unrelated edits into a single commit.
+- If a request touches several distinct concerns, split them into separate commits, each with a focused message describing only that change.
+- Commit and push are separate steps: only push when the user asks. Committing does not imply pushing.
+
 ## Conventions
 
 - **`PROMPT.md` is gitignored** — do not commit it or reference it in tracked files.
